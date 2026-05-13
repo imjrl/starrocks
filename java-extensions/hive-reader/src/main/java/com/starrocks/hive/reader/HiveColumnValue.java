@@ -40,11 +40,13 @@ public class HiveColumnValue implements ColumnValue {
     private final Object fieldData;
     private final ObjectInspector fieldInspector;
     private final String timeZone;
+    private final String nullFormat;
 
-    HiveColumnValue(ObjectInspector fieldInspector, Object fieldData, String timeZone) {
+    HiveColumnValue(ObjectInspector fieldInspector, Object fieldData, String timeZone, Map<String, String> serdeProperties) {
         this.fieldInspector = fieldInspector;
         this.fieldData = fieldData;
         this.timeZone = timeZone;
+        this.nullFormat = serdeProperties.getOrDefault("serialization.null.format", "");
     }
 
     private Object inspectObject() {
@@ -94,7 +96,14 @@ public class HiveColumnValue implements ColumnValue {
     @Override
     public String getString(ColumnType.TypeValue type) {
         Object o = inspectObject();
-        return o.toString();
+        if (o == null) {
+            return null;
+        }
+        String strValue = o.toString();
+        if (nullFormat != null && !nullFormat.isEmpty() && strValue.equals(nullFormat)) {
+            return null;
+        }
+        return strValue;
     }
 
     @Override
@@ -110,7 +119,7 @@ public class HiveColumnValue implements ColumnValue {
         for (Object item : items) {
             HiveColumnValue cv = null;
             if (item != null) {
-                cv = new HiveColumnValue(itemInspector, item, timeZone);
+                cv = new HiveColumnValue(itemInspector, item, timeZone, serdeProperties);
             }
             values.add(cv);
         }
@@ -125,10 +134,10 @@ public class HiveColumnValue implements ColumnValue {
             HiveColumnValue cv0 = null;
             HiveColumnValue cv1 = null;
             if (kv.getKey() != null) {
-                cv0 = new HiveColumnValue(keyObjectInspector, kv.getKey(), timeZone);
+                cv0 = new HiveColumnValue(keyObjectInspector, kv.getKey(), timeZone, serdeProperties);
             }
             if (kv.getValue() != null) {
-                cv1 = new HiveColumnValue(valueObjectInspector, kv.getValue(), timeZone);
+                cv1 = new HiveColumnValue(valueObjectInspector, kv.getValue(), timeZone, serdeProperties);
             }
             keys.add(cv0);
             values.add(cv1);
@@ -146,7 +155,7 @@ public class HiveColumnValue implements ColumnValue {
                 StructField sf = fields.get(idx);
                 Object o = inspector.getStructFieldData(fieldData, sf);
                 if (o != null) {
-                    cv = new HiveColumnValue(sf.getFieldObjectInspector(), o, timeZone);
+                    cv = new HiveColumnValue(sf.getFieldObjectInspector(), o, timeZone, serdeProperties);
                 }
             }
             values.add(cv);

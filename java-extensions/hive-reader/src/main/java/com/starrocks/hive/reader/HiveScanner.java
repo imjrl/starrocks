@@ -266,7 +266,7 @@ public class HiveScanner extends ConnectorScanner {
                     if (fieldData == null) {
                         appendData(i, null);
                     } else {
-                        ColumnValue fieldValue = new HiveColumnValue(fieldInspectors[i], fieldData, timeZone);
+                        ColumnValue fieldValue = new HiveColumnValue(fieldInspectors[i], fieldData, timeZone, serdeProperties);
                         appendData(i, fieldValue);
                     }
                 }
